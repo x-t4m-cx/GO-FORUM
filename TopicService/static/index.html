@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форум</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            position: relative;
+            height: 100vh;
+            margin: 0;
+        }
+        .topic-card {
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            /*100, 175, 230*/
+            background-color: rgba(255, 255, 255, 0.7);
+            width: 50%;
+        }
+        .topic-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+
+        }
+        .comment {
+            border-left: 3px solid #0d6efd;
+            padding-left: 10px;
+            margin-bottom: 15px;
+            background-color: rgba(255,255,255,0.7);
+        }
+        #createTopicForm{
+            width: 50%;
+            background-color: rgba(255,255,255,0.7);
+        }
+        .hidden {
+            display: none;
+        }
+        .auth-tabs .nav-link {
+            cursor: pointer;
+            z-index: 3;
+        }
+        .auth-tabs .nav-link.active {
+            font-weight: bold;
+            z-index: 3;
+        }
+        .content{
+            position: relative;
+            z-index: 1;
+
+        }
+        #number1{
+            position: absolute; /* Абсолютное позиционирование */
+            top: 50%; /* Центр по вертикали */
+            left: 50%; /* Центр по горизонтали */
+            transform: translate(-50%, -50%); /* Центруем по середине */
+            padding: 20px;
+            border-radius: 5px;
+            z-index: -1; /* Позади других элементов */
+        }
+        .chat-container {
+            position: fixed;
+            top: 20%;
+            right: 20px;
+            width: 350px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            z-index: 1000;
+            border: 1px solid #dee2e6;
+        }
+
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 10px;
+        }
+
+        .chat-header h5 {
+            margin: 0;
+            color: #0d6efd;
+        }
+
+        .close-chat {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        .message {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            border-left: 3px solid #0d6efd;
+        }
+
+        .message .username {
+            font-weight: bold;
+            color: #0d6efd;
+            font-size: 0.9rem;
+        }
+
+        .message .text {
+            margin-top: 4px;
+            font-size: 0.9rem;
+        }
+
+        .message .time {
+            font-size: 0.7rem;
+            color: #6c757d;
+            text-align: right;
+        }
+
+        .message-input {
+            display: flex;
+            gap: 8px;
+        }
+
+        .message-input input {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .message-input button {
+            padding: 8px 15px;
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .message-input button:hover {
+            background-color: #0b5ed7;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="#">Форум</a>
+        <button class="btn btn-outline-light me-2 hidden" id="newTopicBtn">+ Новая тема</button>
+        <button class="btn btn-outline-light me-2" id="openChatBtn">+ Открыть чат</button>
+        <div class="navbar-nav">
+            <a class="nav-link" href="#" id="loginBtn">Войти</a>
+            <a class="nav-link hidden" href="#" id="logoutBtn">Выйти</a>
+            <a class="nav-link hidden" href="#" id="usernameDisplay"></a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4 h">
+    <!-- Форма создания темы (только для авторизованных) -->
+    <div class="card mb-4 hidden" id="createTopicForm">
+        <div class="card-header">
+            <h5>Создать новую тему</h5>
+        </div>
+        <div class="card-body">
+            <form id="topicForm">
+                <div class="mb-3">
+                    <input placeholder="Заголовок"
+                           type="text"
+                           class="form-control"
+                           id="topicTitle" required>
+                </div>
+                <div class="mb-3">
+                        <textarea placeholder="Содержание"
+                                  class="form-control"
+                                  id="topicContent"
+                                  rows="3" r
+                                  equired></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id ="CreateTopic">Создать тему</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Список тем -->
+    <div id="topicsList">
+        <h2 class="mb-4">Все темы</h2>
+        <div id="topicsContainer"></div>
+    </div>
+    <!-- Блок чата -->
+    <div class="chat-container hidden" id="chatContainer">
+        <div class="chat-box">
+            <div class="chat-header">
+                <h5>Чат форума</h5>
+                <button class="close-chat" id="closeChatBtn">×</button>
+            </div>
+            <div class="messages" id="messages"></div>
+            <div class="message-input">
+                <input type="text" id="message-input" placeholder="Введите сообщение..." class="form-control">
+                <button id="send-btn" class="btn btn-primary btn-sm">Отправить</button>
+            </div>
+        </div>
+    </div>
+    <!-- Детали темы и комментарии -->
+    <div id="topicDetails" class="hidden">
+        <button class="btn btn-secondary mb-3" id="backToTopics">← Назад к темам</button>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 id="topicTitleDetail"></h3>
+                <small class="text-muted" id="topicAuthor"></small>
+            </div>
+            <div class="card-body">
+                <p id="topicContentDetail"></p>
+            </div>
+            <div class="card-footer text-muted">
+                <span>Создано:</span>
+                <span id="topicCrDate">Создано</span>
+                <span id="topicUpDate"></span>
+                <button class="btn btn-danger btn-sm float-end hidden" id="deleteTopicBtn">Удалить тему</button>
+                <button class="btn btn-secondary btn-sm float-end" id="updateTopicBtn" style = "margin-right: 5px">Изменить тему</button>
+
+            </div>
+        </div>
+
+        <!-- Комментарии -->
+        <h4 class="mb-3">Комментарии</h4>
+        <div id="commentsContainer"></div>
+
+        <!-- Форма создания комментария (только для авторизованных) -->
+        <div class="card mt-4 hidden" id="createCommentForm">
+            <div class="card-header">
+                <h5>Добавить комментарий</h5>
+            </div>
+            <div class="card-body">
+                <form id="commentForm">
+                    <input type="hidden" id="commentTopicId">
+                    <div class="mb-3">
+                        <label for="commentContent" class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="commentContent" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Отправить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно аутентификации -->
+    <div class="modal fade" id="authModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <ul class="nav nav-tabs auth-tabs" id="authTabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#loginTab">Вход</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#registerTab">Регистрация</a>
+                        </li>
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="loginTab">
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="loginUsername" class="form-label">Имя пользователя</label>
+                                    <input type="text" class="form-control" id="loginUsername" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="loginPassword" class="form-label">Пароль</label>
+                                    <input type="password" class="form-control" id="loginPassword" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Войти</button>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="registerTab">
+                            <form id="registerForm">
+                                <div class="mb-3">
+                                    <label for="registerUsername" class="form-label">Имя пользователя</label>
+                                    <input type="text" class="form-control" id="registerUsername" required minlength="3" maxlength="50">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="registerPassword" class="form-label">Пароль</label>
+                                    <input type="password" class="form-control" id="registerPassword" required minlength="6" maxlength="50">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<img id ="number1" src="/static/gopher.png" alt = "Gopher" width="700px" height="400px">
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="static/app.js"></script>
+</body>
+</html>

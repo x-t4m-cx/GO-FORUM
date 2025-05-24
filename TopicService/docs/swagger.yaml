@@ -1,0 +1,579 @@
+definitions:
+  models.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      topic_id:
+        type: integer
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.CommentResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.Comment'
+    type: object
+  models.CommentsListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Comment'
+        type: array
+    type: object
+  models.CreateCommentRequest:
+    properties:
+      content:
+        type: string
+      topic_id:
+        type: string
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  models.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  models.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  models.RegisterRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  models.Topic:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.TopicRequest:
+    properties:
+      content:
+        type: string
+      title:
+        type: string
+    type: object
+  models.TopicResponse:
+    properties:
+      message:
+        type: string
+      topic:
+        $ref: '#/definitions/models.Topic'
+    type: object
+  models.TopicsListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Topic'
+        type: array
+    type: object
+  models.UpdateCommentRequest:
+    properties:
+      content:
+        type: string
+    type: object
+  models.UpdateRequest:
+    properties:
+      content:
+        type: string
+      title:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user and returns JWT tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns access and refresh tokens
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User login
+      tags:
+      - Authentication
+  /auth/logout:
+    post:
+      description: Invalidates refresh token and clears cookies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User logout
+      tags:
+      - Authentication
+  /auth/refresh:
+    post:
+      description: Generates new access token using refresh token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns new access token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Refresh token missing or invalid
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Authentication
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates new user account and returns JWT tokens
+      parameters:
+      - description: Registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Returns access and refresh tokens
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: User already exists
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Register new user
+      tags:
+      - Authentication
+  /auth/verify:
+    get:
+      description: Verifies JWT token and returns username if valid
+      parameters:
+      - description: Bearer access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns username and validation status
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Token is invalid or expired
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Verify access token
+      tags:
+      - Authentication
+  /comments/:
+    post:
+      consumes:
+      - application/json
+      description: Create a new comment for a topic
+      parameters:
+      - description: Comment data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new comment
+      tags:
+      - comments
+  /comments/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a comment by ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a comment
+      tags:
+      - comments
+    get:
+      consumes:
+      - application/json
+      description: Get a comment by its ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Comment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a comment by ID
+      tags:
+      - comments
+    put:
+      consumes:
+      - application/json
+      description: Update a comment by ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a comment
+      tags:
+      - comments
+  /topics/:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all topics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TopicsListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get all topics
+      tags:
+      - topics
+    post:
+      consumes:
+      - application/json
+      description: Create a new topic with the input payload
+      parameters:
+      - description: Topic data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.TopicRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TopicResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new topic
+      tags:
+      - topics
+  /topics/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a topic by ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a topic
+      tags:
+      - topics
+    get:
+      consumes:
+      - application/json
+      description: Get a topic by its ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Topic'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a topic by ID
+      tags:
+      - topics
+    put:
+      consumes:
+      - application/json
+      description: Update a topic by ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Topic data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a topic
+      tags:
+      - topics
+  /topics/comments/{topic_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all comments for a specific topic
+      parameters:
+      - description: Topic ID
+        in: path
+        name: topic_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CommentsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get all comments for a topic
+      tags:
+      - comments
+swagger: "2.0"

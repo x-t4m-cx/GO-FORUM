@@ -1,0 +1,1481 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>config: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">TopicService/internal/config/config.go (100.0%)</option>
+				
+				<option value="file1">TopicService/internal/interfaces/api/http/auth_handler.go (95.2%)</option>
+				
+				<option value="file2">TopicService/internal/interfaces/api/http/comment_handler.go (96.9%)</option>
+				
+				<option value="file3">TopicService/internal/interfaces/api/http/topic_handler.go (100.0%)</option>
+				
+				<option value="file4">TopicService/internal/interfaces/api/middleware/auth.go (90.2%)</option>
+				
+				<option value="file5">TopicService/internal/interfaces/api/persistence/postgres/comment_repository.go (88.4%)</option>
+				
+				<option value="file6">TopicService/internal/interfaces/api/persistence/postgres/topic_repository.go (88.6%)</option>
+				
+				<option value="file7">TopicService/internal/interfaces/api/routes.go (0.0%)</option>
+				
+				<option value="file8">TopicService/internal/usecases/comment.go (100.0%)</option>
+				
+				<option value="file9">TopicService/internal/usecases/topic.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package config
+
+import (
+        "github.com/joho/godotenv"
+        "log"
+        "os"
+)
+
+type Config struct {
+        AppEnv      string
+        ServerPort  string
+        AuthService string
+
+        // Database
+        DBHost     string
+        DBPort     string
+        DBUser     string
+        DBPassword string
+        DBName     string
+        DBSSLMode  string
+
+        LogLevel  string `mapstructure:"LOG_LEVEL"`
+        LogFormat string `mapstructure:"LOG_FORMAT"`
+        LogOutput string `mapstructure:"LOG_OUTPUT"`
+}
+
+func Load() (*Config, error) <span class="cov8" title="1">{
+        err := godotenv.Load()
+        if err != nil </span><span class="cov8" title="1">{
+                log.Printf("Не удалось загрузить .env файл: %v", err)
+        }</span>
+        <span class="cov8" title="1">return &amp;Config{
+                AppEnv:      getEnv("APP_ENV", "development"),
+                ServerPort:  getEnv("SERVER_PORT", "8080"),
+                AuthService: getEnv("AUTH_SERVICE", ""),
+                DBHost:      getEnv("DB_HOST", "localhost"),
+                DBPort:      getEnv("DB_PORT", "5432"),
+                DBUser:      getEnv("DB_USER", "postgres"),
+                DBPassword:  getEnv("DB_PASSWORD", ""),
+                DBName:      getEnv("DB_NAME", ""),
+                DBSSLMode:   getEnv("DB_SSL_MODE", "disable"),
+                LogLevel:    getEnv("LOG_LEVEL", "info"),
+                LogFormat:   getEnv("LOG_FORMAT", "text"),
+                LogOutput:   getEnv("LOG_OUTPUT", ""),
+        }, nil</span>
+}
+
+func getEnv(key, defaultValue string) string <span class="cov8" title="1">{
+        if value, exists := os.LookupEnv(key); exists </span><span class="cov8" title="1">{
+                return value
+        }</span>
+        <span class="cov8" title="1">return defaultValue</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package http
+
+import (
+        "TopicService/internal/domain/models"
+        "TopicService/internal/usecases"
+        "context"
+        "errors"
+        "github.com/gin-gonic/gin"
+        "io"
+        "log/slog"
+        "net/http"
+)
+
+type AuthHandler struct {
+        client usecases.GRPCClientInterface
+        logger slog.Logger
+}
+
+func NewAuthHandler(client usecases.GRPCClientInterface, logger slog.Logger) *AuthHandler <span class="cov8" title="1">{
+        return &amp;AuthHandler{client: client, logger: logger}
+}</span>
+
+// Login handles user login
+// @Summary User login
+// @Description Authenticates user and returns JWT tokens
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body models.LoginRequest true "Login credentials"
+// @Success 200 {object} map[string]interface{} "Returns access and refresh tokens"
+// @Failure 400 {object} models.ErrorResponse "Invalid request format"
+// @Failure 401 {object} models.ErrorResponse "Invalid credentials"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /auth/login [post]
+func (h *AuthHandler) Login(c *gin.Context) <span class="cov8" title="1">{
+        var request models.LoginRequest
+
+        if err := c.ShouldBindJSON(&amp;request); err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">resp, err := h.client.Login(c.Request.Context(), request.Username, request.Password)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(httpStatusCodeFromError(err), models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">copyHeadersAndCookies(c, resp)
+        copyResponseBody(c, resp)</span>
+}
+
+// Logout handles user logout
+// @Summary User logout
+// @Description Invalidates refresh token and clears cookies
+// @Tags Authentication
+// @Produce json
+// @Success 200 "Logout successful"
+// @Failure 400 {object} models.ErrorResponse "Invalid request"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) <span class="cov8" title="1">{
+        if token, err := c.Cookie("refresh_token"); err == nil </span><span class="cov8" title="1">{
+                ctx := context.WithValue(c.Request.Context(), "refresh_token", token)
+                c.Request = c.Request.WithContext(ctx)
+        }</span>
+
+        <span class="cov8" title="1">resp, err := h.client.Logout(c.Request.Context())
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(httpStatusCodeFromError(err), models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">copyHeadersAndCookies(c, resp)
+        copyResponseBody(c, resp)</span>
+}
+
+// Register handles new user registration
+// @Summary Register new user
+// @Description Creates new user account and returns JWT tokens
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body models.RegisterRequest true "Registration data"
+// @Success 201 {object} map[string]interface{} "Returns access and refresh tokens"
+// @Failure 400 {object} models.ErrorResponse "Invalid request format"
+// @Failure 409 {object} models.ErrorResponse "User already exists"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /auth/register [post]
+func (h *AuthHandler) Register(c *gin.Context) <span class="cov8" title="1">{
+        var request models.RegisterRequest
+
+        if err := c.ShouldBindJSON(&amp;request); err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">resp, err := h.client.Register(c.Request.Context(), request.Username, request.Password)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(httpStatusCodeFromError(err), models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+        <span class="cov8" title="1">copyHeadersAndCookies(c, resp)
+        copyResponseBody(c, resp)</span>
+}
+
+// Refresh generates new access token
+// @Summary Refresh access token
+// @Description Generates new access token using refresh token
+// @Tags Authentication
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Returns new access token"
+// @Failure 400 {object} models.ErrorResponse "Refresh token missing or invalid"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /auth/refresh [post]
+func (h *AuthHandler) Refresh(c *gin.Context) <span class="cov8" title="1">{
+        refreshToken, err := c.Cookie("refresh_token")
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">resp, err := h.client.Refresh(c.Request.Context(), refreshToken)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(httpStatusCodeFromError(err), models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">copyHeadersAndCookies(c, resp)
+        copyResponseBody(c, resp)</span>
+}
+
+// Verify checks token validity
+// @Summary Verify access token
+// @Description Verifies JWT token and returns username if valid
+// @Tags Authentication
+// @Produce json
+// @Param Authorization header string true "Bearer access token"
+// @Success 200 {object} map[string]interface{} "Returns username and validation status"
+// @Failure 401 {object} models.ErrorResponse "Token is invalid or expired"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /auth/verify [get]
+func (h *AuthHandler) Verify(c *gin.Context) <span class="cov8" title="1">{
+        token := c.GetHeader("Authorization")
+        if token == "" </span><span class="cov8" title="1">{
+                c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "Authorization header is empty"})
+                return
+        }</span>
+        <span class="cov8" title="1">username, err := h.client.VerifyToken(c.Request.Context(), token)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusUnauthorized, gin.H{
+                        "valid": false,
+                        "error": err.Error(),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, gin.H{
+                "username": username,
+                "valid":    true,
+        })</span>
+}
+
+func httpStatusCodeFromError(err error) int <span class="cov8" title="1">{
+        switch </span>{
+        case errors.Is(err, context.DeadlineExceeded):<span class="cov0" title="0">
+                return http.StatusGatewayTimeout</span>
+        default:<span class="cov8" title="1">
+                return http.StatusInternalServerError</span>
+        }
+}
+
+func copyHeadersAndCookies(c *gin.Context, resp *http.Response) <span class="cov8" title="1">{
+        for name, values := range resp.Header </span><span class="cov8" title="1">{
+                c.Header(name, values[0])
+        }</span>
+}
+
+func copyResponseBody(c *gin.Context, resp *http.Response) <span class="cov8" title="1">{
+        c.Status(resp.StatusCode)
+        if resp.Body != nil </span><span class="cov8" title="1">{
+                defer resp.Body.Close()
+                body, err := io.ReadAll(resp.Body)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                        return
+                }</span>
+                <span class="cov8" title="1">c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package http
+
+import (
+        "TopicService/internal/domain/models"
+        "TopicService/internal/usecases"
+        "github.com/gin-gonic/gin"
+        "log/slog"
+        "net/http"
+        "strconv"
+        "time"
+)
+
+type CommentHandler struct {
+        commentService usecases.CommentUseCasesInterface
+        l              slog.Logger
+}
+
+func NewCommentHandler(commentService usecases.CommentUseCasesInterface, l slog.Logger) *CommentHandler <span class="cov8" title="1">{
+        return &amp;CommentHandler{commentService: commentService, l: l}
+}</span>
+
+// CreateComment godoc
+// @Summary Create a new comment
+// @Description Create a new comment for a topic
+// @Tags comments
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param input body models.CreateCommentRequest true "Comment data"
+// @Success 200 {object} models.CommentResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /comments/ [post]
+func (h *CommentHandler) CreateComment(c *gin.Context) <span class="cov8" title="1">{
+        h.l.Info("CreateComment handler started")
+
+        username, exists := c.Get("username")
+        if !exists </span><span class="cov8" title="1">{
+                h.l.Warn("CreateComment: unauthorized access attempt")
+                c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+                return
+        }</span>
+
+        <span class="cov8" title="1">var req models.CreateCommentRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("CreateComment: invalid request body", "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">topicID, err := strconv.Atoi(req.TopicId)
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("CreateComment: invalid topic ID format", "topic_id", req.TopicId, "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">newComment := &amp;models.Comment{
+                TopicID:   topicID,
+                Username:  username.(string),
+                Content:   req.Content,
+                CreatedAt: time.Now(),
+        }
+
+        h.l.Debug("CreateComment: creating new comment",
+                "topic_id", topicID,
+                "username", username.(string),
+                "content_length", len(req.Content))
+
+        if err := h.commentService.CreateComment(c.Request.Context(), newComment); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("CreateComment: failed to create comment",
+                        "topic_id", topicID,
+                        "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("CreateComment: comment created successfully",
+                "comment_id", newComment.Id,
+                "topic_id", topicID)
+        c.JSON(http.StatusOK, models.CommentResponse{Data: *newComment})</span>
+}
+
+// GetAll godoc
+// @Summary Get all comments for a topic
+// @Description Get list of all comments for a specific topic
+// @Tags comments
+// @Accept  json
+// @Produce  json
+// @Param topic_id path int true "Topic ID"
+// @Success 200 {object} models.CommentsListResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /topics/comments/{topic_id} [get]
+func (h *CommentHandler) GetAll(c *gin.Context) <span class="cov8" title="1">{
+        topicId, err := strconv.Atoi(c.Param("topic_id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetAllComments: invalid topic ID format",
+                        "topic_id_param", c.Param("topic_id"),
+                        "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("GetAllComments handler started", "topic_id", topicId)
+
+        comments, err := h.commentService.GetAllComments(c.Request.Context(), topicId)
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetAllComments: failed to get comments",
+                        "topic_id", topicId,
+                        "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("GetAllComments: successfully retrieved comments",
+                "topic_id", topicId,
+                "count", len(comments))
+        c.JSON(http.StatusOK, models.CommentsListResponse{Data: comments})</span>
+}
+
+// GetComment godoc
+// @Summary Get a comment by ID
+// @Description Get a comment by its ID
+// @Tags comments
+// @Accept  json
+// @Produce  json
+// @Param id path int true "Comment ID"
+// @Success 200 {object} models.Comment
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /comments/{id} [get]
+func (h *CommentHandler) GetComment(c *gin.Context) <span class="cov8" title="1">{
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetComment: invalid comment ID format",
+                        "id_param", c.Param("id"),
+                        "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("GetComment handler started", "comment_id", id)
+
+        comment, err := h.commentService.GetComment(c.Request.Context(), id)
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetComment: failed to get comment",
+                        "comment_id", id,
+                        "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Debug("GetComment: successfully retrieved comment",
+                "comment_id", id,
+                "topic_id", comment.TopicID,
+                "username", comment.Username)
+        c.JSON(http.StatusOK, comment)</span>
+}
+
+// UpdateComment godoc
+// @Summary Update a comment
+// @Description Update a comment by ID
+// @Tags comments
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "Comment ID"
+// @Param input body models.UpdateCommentRequest true "Comment data"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /comments/{id} [put]
+func (h *CommentHandler) UpdateComment(c *gin.Context) <span class="cov8" title="1">{
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateComment: invalid comment ID format",
+                        "id_param", c.Param("id"),
+                        "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "Invalid comment ID"})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("UpdateComment handler started", "comment_id", id)
+
+        var req models.UpdateCommentRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateComment: invalid request body",
+                        "comment_id", id,
+                        "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">username, exists := c.Get("username")
+        if !exists </span><span class="cov0" title="0">{
+                h.l.Warn("UpdateComment: unauthorized access attempt",
+                        "comment_id", id)
+                c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+                return
+        }</span>
+
+        <span class="cov8" title="1">existingComment, err := h.commentService.GetComment(c.Request.Context(), id)
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateComment: failed to get existing comment",
+                        "comment_id", id,
+                        "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">if existingComment.Username != username.(string) &amp;&amp; username.(string) != "admin" </span><span class="cov8" title="1">{
+                h.l.Warn("UpdateComment: forbidden access attempt",
+                        "comment_id", id,
+                        "request_user", username.(string),
+                        "comment_owner", existingComment.Username)
+                c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "forbidden"})
+                return
+        }</span>
+
+        <span class="cov8" title="1">updatedComment := &amp;models.Comment{
+                Id:        id,
+                Content:   req.Content,
+                UpdatedAt: time.Now(),
+        }
+
+        h.l.Debug("UpdateComment: updating comment",
+                "comment_id", id,
+                "content_length", len(req.Content))
+
+        if err := h.commentService.UpdateComment(c.Request.Context(), updatedComment); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateComment: failed to update comment",
+                        "comment_id", id,
+                        "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("UpdateComment: comment updated successfully", "comment_id", id)
+        c.JSON(http.StatusOK, models.MessageResponse{Message: "Comment updated successfully"})</span>
+}
+
+// DeleteComment godoc
+// @Summary Delete a comment
+// @Description Delete a comment by ID
+// @Tags comments
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "Comment ID"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /comments/{id} [delete]
+func (h *CommentHandler) DeleteComment(c *gin.Context) <span class="cov8" title="1">{
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("DeleteComment: invalid comment ID format",
+                        "id_param", c.Param("id"),
+                        "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("DeleteComment handler started", "comment_id", id)
+
+        if err := h.commentService.DeleteComment(c.Request.Context(), id); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("DeleteComment: failed to delete comment",
+                        "comment_id", id,
+                        "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("DeleteComment: comment deleted successfully", "comment_id", id)
+        c.JSON(http.StatusOK, models.MessageResponse{Message: "Comment deleted successfully!"})</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package http
+
+import (
+        "TopicService/internal/domain/models"
+        "TopicService/internal/usecases"
+        "github.com/gin-gonic/gin"
+        "log/slog"
+        "net/http"
+        "strconv"
+        "time"
+)
+
+type TopicHandler struct {
+        topicService usecases.TopicUseCasesInterface
+        l            slog.Logger
+}
+
+func NewTopicHandler(topicService usecases.TopicUseCasesInterface, l slog.Logger) *TopicHandler <span class="cov8" title="1">{
+        return &amp;TopicHandler{topicService: topicService, l: l}
+}</span>
+
+// CreateTopic godoc
+// @Summary Create a new topic
+// @Description Create a new topic with the input payload
+// @Tags topics
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param input body models.TopicRequest true "Topic data"
+// @Success 201 {object} models.TopicResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /topics/ [post]
+func (h *TopicHandler) CreateTopic(c *gin.Context) <span class="cov8" title="1">{
+        h.l.Info("CreateTopic handler started")
+
+        username, exists := c.Get("username")
+        if !exists </span><span class="cov8" title="1">{
+                h.l.Warn("CreateTopic: unauthorized access attempt")
+                c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+                return
+        }</span>
+
+        <span class="cov8" title="1">var req models.TopicRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("CreateTopic: invalid request body", "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">newTopic := &amp;models.Topic{
+                Title:     req.Title,
+                Content:   req.Content,
+                Username:  username.(string),
+                CreatedAt: time.Now(),
+        }
+
+        h.l.Debug("CreateTopic: creating new topic", "topic", newTopic)
+
+        if err := h.topicService.CreateTopic(c.Request.Context(), newTopic); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("CreateTopic: failed to create topic", "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("CreateTopic: topic created successfully", "topicID", newTopic.Id)
+        c.JSON(http.StatusCreated, models.TopicResponse{
+                Message: "Topic created successfully!",
+                Topic:   *newTopic,
+        })</span>
+}
+
+// GetAll godoc
+// @Summary Get all topics
+// @Description Get list of all topics
+// @Tags topics
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} models.TopicsListResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /topics/ [get]
+func (h *TopicHandler) GetAll(c *gin.Context) <span class="cov8" title="1">{
+        h.l.Info("GetAll handler started")
+
+        topics, err := h.topicService.GetAllTopics(c.Request.Context())
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetAll: failed to get topics", "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("GetAll: successfully retrieved topics", "count", len(topics))
+        c.JSON(http.StatusOK, models.TopicsListResponse{Data: topics})</span>
+}
+
+// GetTopic godoc
+// @Summary Get a topic by ID
+// @Description Get a topic by its ID
+// @Tags topics
+// @Accept  json
+// @Produce  json
+// @Param id path int true "Topic ID"
+// @Success 200 {object} models.Topic
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /topics/{id} [get]
+func (h *TopicHandler) GetTopic(c *gin.Context) <span class="cov8" title="1">{
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetTopic: invalid topic ID", "id", c.Param("id"), "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("GetTopic handler started", "topicID", id)
+
+        topic, err := h.topicService.GetTopic(c.Request.Context(), id)
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("GetTopic: failed to get topic", "topicID", id, "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Debug("GetTopic: successfully retrieved topic", "topic", topic)
+        c.JSON(http.StatusOK, topic)</span>
+}
+
+// UpdateTopic godoc
+// @Summary Update a topic
+// @Description Update a topic by ID
+// @Tags topics
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "Topic ID"
+// @Param input body models.UpdateRequest true "Topic data"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /topics/{id} [put]
+func (h *TopicHandler) UpdateTopic(c *gin.Context) <span class="cov8" title="1">{
+        h.l.Info("UpdateTopic handler started")
+
+        var req models.UpdateRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateTopic: invalid request body", "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">topicId, err := strconv.Atoi(c.Param("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateTopic: invalid topic ID", "id", c.Param("id"), "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">updateTopic := &amp;models.Topic{
+                Id:        topicId,
+                Title:     req.Title,
+                Content:   req.Content,
+                UpdatedAt: time.Now(),
+        }
+
+        h.l.Debug("UpdateTopic: updating topic", "topic", updateTopic)
+
+        err = h.topicService.UpdateTopic(c.Request.Context(), updateTopic)
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("UpdateTopic: failed to update topic", "topicID", topicId, "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("UpdateTopic: topic updated successfully", "topicID", topicId)
+        c.JSON(http.StatusOK, models.MessageResponse{Message: "Topic updated successfully!"})</span>
+}
+
+// DeleteTopic godoc
+// @Summary Delete a topic
+// @Description Delete a topic by ID
+// @Tags topics
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "Topic ID"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /topics/{id} [delete]
+func (h *TopicHandler) DeleteTopic(c *gin.Context) <span class="cov8" title="1">{
+        id, err := strconv.Atoi(c.Param("id"))
+        if err != nil </span><span class="cov8" title="1">{
+                h.l.Error("DeleteTopic: invalid topic ID", "id", c.Param("id"), "error", err)
+                c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("DeleteTopic handler started", "topicID", id)
+
+        if err := h.topicService.DeleteTopic(c.Request.Context(), id); err != nil </span><span class="cov8" title="1">{
+                h.l.Error("DeleteTopic: failed to delete topic", "topicID", id, "error", err)
+                c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+                return
+        }</span>
+
+        <span class="cov8" title="1">h.l.Info("DeleteTopic: topic deleted successfully", "topicID", id)
+        c.JSON(http.StatusOK, models.MessageResponse{Message: "Topic deleted successfully!"})</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package middleware
+
+import (
+        "TopicService/internal/usecases"
+        "github.com/gin-gonic/gin"
+        "log/slog"
+        "net/http"
+        "strings"
+)
+
+type AuthMiddleware struct {
+        authClient usecases.GRPCClientInterface
+}
+
+func NewAuthMiddleware(authClient usecases.GRPCClientInterface, logger slog.Logger) *AuthMiddleware <span class="cov8" title="1">{
+        return &amp;AuthMiddleware{authClient: authClient}
+}</span>
+
+func (m *AuthMiddleware) Auth() gin.HandlerFunc <span class="cov8" title="1">{
+        return func(c *gin.Context) </span><span class="cov8" title="1">{
+
+                authHeader := c.GetHeader("Authorization")
+                if authHeader == "" </span><span class="cov8" title="1">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Authorization header is required",
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">headerParts := strings.Split(authHeader, " ")
+                if len(headerParts) != 2 || headerParts[0] != "Bearer" </span><span class="cov8" title="1">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Invalid authorization header format",
+                        })
+                        return
+                }</span>
+                <span class="cov8" title="1">token := headerParts[1]
+                if token == "" </span><span class="cov8" title="1">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Empty token provided",
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">username, err := m.authClient.VerifyToken(c.Request.Context(), token)
+                if err == nil </span><span class="cov8" title="1">{
+                        c.Set("username", username)
+                        c.Next()
+                        return
+                }</span>
+
+                <span class="cov8" title="1">refreshToken, err := c.Cookie("refresh_token")
+                if err != nil </span><span class="cov8" title="1">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Refresh token required",
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">resp, err := m.authClient.Refresh(c.Request.Context(), refreshToken)
+                if err != nil </span><span class="cov8" title="1">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Failed to refresh token: " + err.Error(),
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Token refresh failed",
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">newAccessToken := resp.Header.Get("Authorization")
+                if newAccessToken == "" </span><span class="cov0" title="0">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "New access token not provided",
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">c.Request.Header.Set("Authorization", newAccessToken)
+
+                username, err = m.authClient.VerifyToken(
+                        c.Request.Context(),
+                        strings.TrimPrefix(newAccessToken, "Bearer "),
+                )
+                if err != nil </span><span class="cov8" title="1">{
+                        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+                                "error": "Refreshed token is invalid: " + err.Error(),
+                        })
+                        return
+                }</span>
+
+                <span class="cov8" title="1">c.Set("username", username)
+                c.Next()</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package postgres
+
+import (
+        "TopicService/internal/domain/models"
+        "context"
+        "database/sql"
+        "errors"
+        "log/slog"
+        "time"
+)
+
+type CommentRepo interface {
+        Create(ctx context.Context, comment *models.Comment) error
+        Update(ctx context.Context, comment *models.Comment) error
+        Delete(ctx context.Context, id int) error
+        FindById(ctx context.Context, id int) (*models.Comment, error)
+        FindAll(ctx context.Context, topicId int) ([]*models.Comment, error)
+}
+
+type commentRepository struct {
+        db *sql.DB
+        l  slog.Logger
+}
+
+func NewCommentRepository(db *sql.DB, l slog.Logger) CommentRepo <span class="cov8" title="1">{
+        return &amp;commentRepository{db: db, l: l}
+}</span>
+
+func (r *commentRepository) Create(ctx context.Context, comment *models.Comment) error <span class="cov8" title="1">{
+
+        query := `INSERT INTO comments (topic_id, username, content, created_at, updated_at) 
+                                VALUES ($1,$2,$3,$4,$5) RETURNING id;`
+
+        err := r.db.QueryRowContext(ctx, query,
+                comment.TopicID, comment.Username,
+                comment.Content, comment.CreatedAt, comment.UpdatedAt).Scan(&amp;comment.Id)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при создании комментария",
+                        "error", err,
+                        "topicID", comment.TopicID,
+                        "username", comment.Username)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Комментарий успешно создан",
+                "id", comment.Id,
+                "topicID", comment.TopicID)
+        return nil</span>
+}
+
+func (r *commentRepository) Update(ctx context.Context, comment *models.Comment) error <span class="cov8" title="1">{
+        r.l.Debug("Обновление комментария",
+                "id", comment.Id,
+                "topicID", comment.TopicID)
+
+        query := `UPDATE comments 
+                                SET content = $1, updated_at = $2
+                                WHERE id = $3;`
+
+        result, err := r.db.ExecContext(ctx, query, comment.Content, time.Now(), comment.Id)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при обновлении комментария",
+                        "error", err,
+                        "id", comment.Id)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                r.l.Error("Ошибка при получении количества обновленных строк",
+                        "error", err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                r.l.Warn("Комментарий не найден для обновления",
+                        "id", comment.Id)
+                return errors.New("no rows updated")
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Комментарий успешно обновлен",
+                "id", comment.Id,
+                "rowsAffected", rowsAffected)
+        return nil</span>
+}
+
+func (r *commentRepository) Delete(ctx context.Context, id int) error <span class="cov8" title="1">{
+        r.l.Debug("Удаление комментария", "id", id)
+
+        query := `DELETE FROM comments WHERE id = $1;`
+        result, err := r.db.ExecContext(ctx, query, id)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при удалении комментария",
+                        "error", err,
+                        "id", id)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                r.l.Error("Ошибка при получении количества удаленных строк",
+                        "error", err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                r.l.Warn("Комментарий не найден для удаления", "id", id)
+                return errors.New("no rows deleted")
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Комментарий успешно удален",
+                "id", id,
+                "rowsAffected", rowsAffected)
+        return nil</span>
+}
+
+func (r *commentRepository) FindById(ctx context.Context, id int) (*models.Comment, error) <span class="cov8" title="1">{
+        r.l.Debug("Поиск комментария по ID", "id", id)
+
+        query := `SELECT * FROM comments WHERE id = $1;`
+        var comment models.Comment
+
+        err := r.db.QueryRowContext(ctx, query, id).Scan(
+                &amp;comment.Id, &amp;comment.TopicID,
+                &amp;comment.Username, &amp;comment.Content,
+                &amp;comment.CreatedAt, &amp;comment.UpdatedAt)
+
+        if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                r.l.Debug("Комментарий не найден", "id", id)
+                return nil, nil
+        }</span>
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при поиске комментария",
+                        "error", err,
+                        "id", id)
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">r.l.Debug("Комментарий найден",
+                "id", comment.Id,
+                "topicID", comment.TopicID)
+        return &amp;comment, nil</span>
+}
+
+func (r *commentRepository) FindAll(ctx context.Context, topicId int) ([]*models.Comment, error) <span class="cov8" title="1">{
+        r.l.Debug("Получение всех комментариев для темы",
+                "topicID", topicId)
+
+        query := `SELECT * FROM comments WHERE topic_id = $1 ORDER BY created_at DESC;`
+
+        rows, err := r.db.QueryContext(ctx, query, topicId)
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при получении комментариев",
+                        "error", err,
+                        "topicID", topicId)
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+
+        var comments []*models.Comment
+        for rows.Next() </span><span class="cov8" title="1">{
+                var comment models.Comment
+                if err := rows.Scan(&amp;comment.Id, &amp;comment.TopicID,
+                        &amp;comment.Username, &amp;comment.Content,
+                        &amp;comment.CreatedAt, &amp;comment.UpdatedAt); err != nil </span><span class="cov0" title="0">{
+                        r.l.Error("Ошибка при сканировании комментария",
+                                "error", err)
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">comments = append(comments, &amp;comment)</span>
+        }
+
+        <span class="cov8" title="1">if err := rows.Err(); err != nil </span><span class="cov0" title="0">{
+                r.l.Error("Ошибка при обработке результатов запроса комментариев",
+                        "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Успешно получены комментарии",
+                "topicID", topicId,
+                "count", len(comments))
+        return comments, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package postgres
+
+import (
+        "TopicService/internal/domain/models"
+        "context"
+        "database/sql"
+        "errors"
+        "log/slog"
+        "time"
+)
+
+type TopicRepo interface {
+        Create(ctx context.Context, topic *models.Topic) error
+        Update(ctx context.Context, topic *models.Topic) error
+        Delete(ctx context.Context, id int) error
+        FindById(ctx context.Context, id int) (*models.Topic, error)
+        FindAll(ctx context.Context) ([]*models.Topic, error)
+}
+
+type topicRepository struct {
+        db *sql.DB
+        l  slog.Logger
+}
+
+func NewTopicRepository(db *sql.DB, l slog.Logger) TopicRepo <span class="cov8" title="1">{
+        return &amp;topicRepository{db: db, l: l}
+}</span>
+
+func (r *topicRepository) Create(ctx context.Context, topic *models.Topic) error <span class="cov8" title="1">{
+        r.l.Debug("Попытка создания новой темы", "topic", topic.Title)
+
+        query := `INSERT INTO topics (title, content, username, created_at, updated_at) 
+                                VALUES ($1,$2,$3,$4,$5) RETURNING id;`
+
+        err := r.db.QueryRowContext(ctx, query,
+                topic.Title, topic.Content,
+                topic.Username, topic.CreatedAt, topic.UpdatedAt).Scan(&amp;topic.Id)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при создании темы",
+                        "error", err,
+                        "topic", topic.Title)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Тема успешно создана",
+                "id", topic.Id,
+                "title", topic.Title)
+        return nil</span>
+}
+
+func (r *topicRepository) Update(ctx context.Context, topic *models.Topic) error <span class="cov8" title="1">{
+        r.l.Debug("Попытка обновления темы",
+                "id", topic.Id,
+                "title", topic.Title)
+
+        query := `UPDATE topics 
+                                SET title = $1, content = $2, updated_at = $3
+                                WHERE id = $4;`
+
+        result, err := r.db.ExecContext(ctx, query, topic.Title, topic.Content, time.Now(), topic.Id)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при обновлении темы",
+                        "error", err,
+                        "id", topic.Id)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                r.l.Error("Ошибка при получении количества обновленных строк",
+                        "error", err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                r.l.Warn("Не найдено тем для обновления",
+                        "id", topic.Id)
+                return errors.New("no rows updated")
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Тема успешно обновлена",
+                "id", topic.Id,
+                "rowsAffected", rowsAffected)
+        return nil</span>
+}
+
+func (r *topicRepository) Delete(ctx context.Context, id int) error <span class="cov8" title="1">{
+        r.l.Debug("Попытка удаления темы", "id", id)
+
+        query := `DELETE FROM topics WHERE id = $1;`
+        result, err := r.db.ExecContext(ctx, query, id)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при удалении темы",
+                        "error", err,
+                        "id", id)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                r.l.Error("Ошибка при получении количества удаленных строк",
+                        "error", err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                r.l.Warn("Не найдено тем для удаления", "id", id)
+                return errors.New("no rows deleted")
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Тема успешно удалена",
+                "id", id,
+                "rowsAffected", rowsAffected)
+        return nil</span>
+}
+
+func (r *topicRepository) FindById(ctx context.Context, id int) (*models.Topic, error) <span class="cov8" title="1">{
+        r.l.Debug("Поиск темы по ID", "id", id)
+
+        query := `SELECT * FROM topics WHERE id = $1;`
+        var topic models.Topic
+
+        err := r.db.QueryRowContext(ctx, query, id).Scan(
+                &amp;topic.Id,
+                &amp;topic.Title,
+                &amp;topic.Content,
+                &amp;topic.Username,
+                &amp;topic.CreatedAt,
+                &amp;topic.UpdatedAt)
+
+        if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                r.l.Warn("Тема не найдена", "id", id)
+                return nil, sql.ErrNoRows
+        }</span>
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при поиске темы",
+                        "error", err,
+                        "id", id)
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Тема найдена",
+                "id", topic.Id,
+                "title", topic.Title)
+        return &amp;topic, nil</span>
+}
+
+func (r *topicRepository) FindAll(ctx context.Context) ([]*models.Topic, error) <span class="cov8" title="1">{
+        r.l.Debug("Получение списка всех тем")
+
+        query := `SELECT * FROM topics ORDER BY created_at DESC;`
+        rows, err := r.db.QueryContext(ctx, query)
+
+        if err != nil </span><span class="cov8" title="1">{
+                r.l.Error("Ошибка при получении списка тем", "error", err)
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+
+        var topics []*models.Topic
+        for rows.Next() </span><span class="cov8" title="1">{
+                var topic models.Topic
+                if err := rows.Scan(
+                        &amp;topic.Id,
+                        &amp;topic.Title,
+                        &amp;topic.Content,
+                        &amp;topic.Username,
+                        &amp;topic.CreatedAt,
+                        &amp;topic.UpdatedAt); err != nil </span><span class="cov0" title="0">{
+
+                        r.l.Error("Ошибка при сканировании строки темы", "error", err)
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">topics = append(topics, &amp;topic)</span>
+        }
+
+        <span class="cov8" title="1">if err := rows.Err(); err != nil </span><span class="cov0" title="0">{
+                r.l.Error("Ошибка при обработке результатов запроса", "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">r.l.Info("Успешно получен список тем", "count", len(topics))
+        return topics, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package api
+
+import (
+        "TopicService/internal/interfaces/api/http"
+        "github.com/gin-gonic/gin"
+)
+
+// @title Topic Service API
+// @version 1.0
+// @description This is a topic service with authentication
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+func SetupTopicRoutes(router *gin.Engine,
+        th *http.TopicHandler,
+        ch *http.CommentHandler,
+        ah *http.AuthHandler,
+        authMiddleware gin.HandlerFunc) <span class="cov0" title="0">{
+
+        // Auth routes
+        authGroup := router.Group("/auth")
+        </span><span class="cov0" title="0">{
+                authGroup.POST("/register", ah.Register)
+                authGroup.POST("/login", ah.Login)
+                authGroup.POST("/refresh", ah.Refresh)
+                authGroup.POST("/logout", ah.Logout)
+        }</span>
+
+        // Topic routes
+        <span class="cov0" title="0">topicGroup := router.Group("/topics")
+        </span><span class="cov0" title="0">{
+                // Public routes
+                topicGroup.GET("/", th.GetAll)
+                topicGroup.GET("/:id", th.GetTopic)
+                topicGroup.GET("/comments/:topic_id", ch.GetAll)
+
+                // Protected routes
+                protected := topicGroup.Use(authMiddleware)
+                </span><span class="cov0" title="0">{
+                        protected.POST("/", th.CreateTopic)
+                        protected.PUT("/:id", th.UpdateTopic)
+                        protected.DELETE("/:id", th.DeleteTopic)
+                }</span>
+        }
+
+        // Comment routes
+        <span class="cov0" title="0">commentGroup := router.Group("/comments")
+        </span><span class="cov0" title="0">{
+                commentGroup.GET("/:id", ch.GetComment)
+
+                protected := commentGroup.Use(authMiddleware)
+                </span><span class="cov0" title="0">{
+                        protected.POST("/", ch.CreateComment)
+                        protected.PUT("/:id", ch.UpdateComment)
+                        protected.DELETE("/:id", ch.DeleteComment)
+                }</span>
+        }
+
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package usecases
+
+import (
+        "TopicService/internal/domain/models"
+        "TopicService/internal/interfaces/api/persistence/postgres"
+        "context"
+        "log/slog"
+)
+
+type CommentService struct {
+        repo postgres.CommentRepo
+        l    slog.Logger
+}
+
+func NewCommentUseCase(repo postgres.CommentRepo, logger slog.Logger) CommentUseCasesInterface <span class="cov8" title="1">{
+        return &amp;CommentService{repo: repo, l: logger}
+}</span>
+func (s *CommentService) CreateComment(ctx context.Context, comment *models.Comment) error <span class="cov8" title="1">{
+        return s.repo.Create(ctx, comment)
+}</span>
+func (s *CommentService) GetComment(ctx context.Context, id int) (*models.Comment, error) <span class="cov8" title="1">{
+        return s.repo.FindById(ctx, id)
+}</span>
+func (s *CommentService) GetAllComments(ctx context.Context, topicId int) ([]*models.Comment, error) <span class="cov8" title="1">{
+        return s.repo.FindAll(ctx, topicId)
+}</span>
+func (s *CommentService) DeleteComment(ctx context.Context, id int) error <span class="cov8" title="1">{
+        return s.repo.Delete(ctx, id)
+}</span>
+func (s *CommentService) UpdateComment(ctx context.Context, comment *models.Comment) error <span class="cov8" title="1">{
+        return s.repo.Update(ctx, comment)
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package usecases
+
+import (
+        "TopicService/internal/domain/models"
+        "TopicService/internal/interfaces/api/persistence/postgres"
+        "context"
+        "log/slog"
+)
+
+type TopicService struct {
+        repo postgres.TopicRepo
+}
+
+func NewTopicUseCase(repo postgres.TopicRepo, logger slog.Logger) TopicUseCasesInterface <span class="cov8" title="1">{
+        return &amp;TopicService{repo: repo}
+}</span>
+func (s *TopicService) CreateTopic(ctx context.Context, topic *models.Topic) error <span class="cov8" title="1">{
+        return s.repo.Create(ctx, topic)
+}</span>
+func (s *TopicService) GetTopic(ctx context.Context, id int) (*models.Topic, error) <span class="cov8" title="1">{
+        return s.repo.FindById(ctx, id)
+}</span>
+func (s *TopicService) GetAllTopics(ctx context.Context) ([]*models.Topic, error) <span class="cov8" title="1">{
+        return s.repo.FindAll(ctx)
+}</span>
+func (s *TopicService) DeleteTopic(ctx context.Context, id int) error <span class="cov8" title="1">{
+        return s.repo.Delete(ctx, id)
+}</span>
+func (s *TopicService) UpdateTopic(ctx context.Context, topic *models.Topic) error <span class="cov8" title="1">{
+        return s.repo.Update(ctx, topic)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
